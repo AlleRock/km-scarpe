@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Tracker Scarpe</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Miei Km">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/552/552408.png">
+    
+    <style>
+        :root {
+            --ios-blue: #007AFF;
+            --ios-bg: #F2F2F7;
+            --ios-card: #FFFFFF;
+            --ios-text: #000000;
+            --ios-red: #FF3B30;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--ios-bg);
+            color: var(--ios-text);
+            margin: 0;
+            padding: env(safe-area-inset-top) 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: var(--ios-card);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 { font-size: 1.2rem; font-weight: 600; margin-bottom: 5px; color: #666; }
+
+        .total-km {
+            font-size: 4rem;
+            font-weight: 800;
+            color: var(--ios-blue);
+            margin: 10px 0;
+        }
+
+        .limit-info {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            background: #F9F9F9;
+            -webkit-appearance: none;
+        }
+
+        button {
+            width: 100%;
+            background: var(--ios-blue);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:active { opacity: 0.7; }
+
+        .history {
+            background: var(--ios-card);
+            border-radius: 15px;
+            padding: 10px 20px;
+            text-align: left;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #EEE;
+        }
+
+        .history-item:last-child { border-bottom: none; }
+
+        .date { font-size: 0.9rem; color: #666; }
+        .km-val { font-weight: 600; }
+
+        .clear-btn {
+            background: none;
+            color: var(--ios-red);
+            margin-top: 30px;
+            font-size: 0.9rem;
+            border: none;
+            width: 100%;
+        }
+
+        /* Allerta cambio scarpe */
+        .warning {
+            color: var(--ios-red);
+            font-weight: bold;
+            display: none;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>KM TOTALI</h1>
+        <div class="total-km" id="totalDisplay">0</div>
+        <div class="limit-info">Target sostituzione: 500 km</div>
+        <div id="shoeWarning" class="warning">⚠️ È ora di cambiare scarpe!</div>
+        
+        <input type="number" id="kmInput" placeholder="Quanti km oggi?" step="0.1" inputmode="decimal">
+        <button onclick="addKm()">Registra Corsa</button>
+    </div>
+
+    <div class="history" id="historyList">
+        </div>
+
+    <button class="clear-btn" onclick="clearData()">Resetta tutto lo storico</button>
+</div>
+
+<script>
+    // Recupero dati salvati o inizializzo
+    let trackerData = JSON.parse(localStorage.getItem('runningStats')) || { total: 0, history: [] };
+
+    function updateUI() {
+        // Aggiorna totale
+        const total = trackerData.total;
+        document.getElementById('totalDisplay').innerText = total.toFixed(1);
+
+        // Mostra avviso se > 500km
+        const warning = document.getElementById('shoeWarning');
+        warning.style.display = total >= 500 ? 'block' : 'none';
+
+        // Aggiorna lista storico
+        const list = document.getElementById('historyList');
+        if (trackerData.history.length === 0) {
+            list.innerHTML = '<p style="text-align:center; color:#999;">Nessuna corsa registrata</p>';
+        } else {
+            list.innerHTML = trackerData.history.map(item => `
+                <div class="history-item">
+                    <span class="date">${item.date}</span>
+                    <span class="km-val">+${item.km} km</span>
+                </div>
+            `).reverse().join('');
+        }
+    }
+
+    function addKm() {
+        const input = document.getElementById('kmInput');
+        const km = parseFloat(input.value);
+        
+        if (isNaN(km) || km <= 0) {
+            alert("Inserisci un numero valido");
+            return;
+        }
+
+        // Aggiorna dati
+        trackerData.total += km;
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+        
+        trackerData.history.push({ km: km, date: dateStr });
+        
+        // Salva nel telefono
+        localStorage.setItem('runningStats', JSON.stringify(trackerData));
+        
+        // Pulisci e aggiorna
+        input.value = '';
+        updateUI();
+    }
+
+    function clearData() {
+        if (confirm("Sei sicuro? Perderai tutti i km salvati.")) {
+            trackerData = { total: 0, history: [] };
+            localStorage.setItem('runningStats', JSON.stringify(trackerData));
+            updateUI();
+        }
+    }
+
+    // Caricamento iniziale
+    updateUI();
+</script>
+
+</body>
+</html>
